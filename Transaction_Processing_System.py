@@ -1,4 +1,5 @@
 import sqlite3
+from random import choice
 
 # Conexión a la base de datos SQLite
 conn = sqlite3.connect("tps.db")
@@ -75,6 +76,94 @@ def mostrar_transacciones():
     for transaccion in transacciones:
         print(f"ID {transaccion[0]} - Cliente: {transaccion[1]} - Producto: {transaccion[2]} - Precio: {transaccion[3]}€ - Fecha: {transaccion[4]}")
 
+# Funciones para generar informes de gestión (KPIs)        
+
+def mostrar_informes_financieros(fecha_inicio, fecha_fin):
+    cursor.execute("""
+        SELECT SUM(p.precio) AS total_ventas, COUNT(*) AS num_transacciones, 
+               (SUM(p.precio)*1.0 / COUNT(*)) AS ticket_medio
+        FROM transacciones t
+        JOIN productos p ON t.producto_id = p.id
+        WHERE t.fecha BETWEEN ? AND ?
+    """, (fecha_inicio, fecha_fin))
+    resultado = cursor.fetchone()
+    
+    if resultado and resultado[1] > 0:
+        total, num, ticket = resultado
+        print(f"\nInforme Financiero ({fecha_inicio} a {fecha_fin}):")
+        print(f"  Total de Ventas: {total:.2f}€")
+        print(f"  Número de Transacciones: {num}")
+        print(f"  Ticket Promedio: {ticket:.2f}€")
+    else:
+        print("No hay datos para el período seleccionado.")
+
+def mostrar_producto_mas_vendido(fecha_inicio, fecha_fin):
+    cursor.execute("""
+        SELECT p.nombre, COUNT(*) AS cantidad_vendida
+        FROM transacciones t
+        JOIN productos p ON t.producto_id = p.id
+        WHERE t.fecha BETWEEN ? AND ?
+        GROUP BY p.nombre
+        ORDER BY cantidad_vendida DESC
+        LIMIT 1
+    """, (fecha_inicio, fecha_fin))
+    resultado = cursor.fetchone()
+    
+    if resultado:
+        nombre_producto, cantidad = resultado
+        print(f"\nProducto Más Vendido ({fecha_inicio} a {fecha_fin}): {nombre_producto} con {cantidad} ventas")
+    else:
+        print("No se encontraron ventas en el período seleccionado.")
+
+def mostrar_informes_gestion():
+    fecha_inicio = input("Introduce la fecha de inicio (YYYY-MM-DD): ")
+    fecha_fin = input("Introduce la fecha de fin (YYYY-MM-DD): ")
+    
+    # Mostrar el informe financiero y el producto más vendido para el rango ingresado.
+    mostrar_informes_financieros(fecha_inicio, fecha_fin)
+    mostrar_producto_mas_vendido(fecha_inicio, fecha_fin)
+
+def insertar_registros_ejemplo():
+    # Datos de ejemplo para clientes
+    clientes_ejemplo = [
+        ("Ana", "ana@example.com"),
+        ("Luis", "luis@example.com"),
+        ("Marta", "marta@example.com"),
+        ("Carlos", "carlos@example.com"),
+        ("Elena", "elena@example.com")
+    ]
+    
+    # Inserción de clientes
+    for nombre, email in clientes_ejemplo:
+        registrar_cliente(nombre, email)
+    
+    # Datos de ejemplo para productos
+    productos_ejemplo = [
+        ("Televisor 40\"", 399.99),
+        ("Laptop", 899.99),
+        ("Smartphone", 499.99),
+        ("Cámara Digital", 299.99),
+        ("Auriculares", 59.99)
+    ]
+    
+    
+    for nombre, precio in productos_ejemplo:
+        añadir_producto(nombre, precio)
+    
+    
+    emails = [email for _, email in clientes_ejemplo]
+    num_productos = len(productos_ejemplo)
+    
+    for i in range(10):
+        email = choice(emails)
+        producto_id = choice(range(1, num_productos + 1))
+        realizar_compra(email, producto_id)
+
+
+insertar_registros_ejemplo()
+
+
+
 # Menú en consola para probar el sistema
 def menu():
     while True:
@@ -83,7 +172,9 @@ def menu():
         print("2️⃣ Añadir Producto")
         print("3️⃣ Realizar Compra")
         print("4️⃣ Ver Historial de Transacciones")
-        print("5️⃣ Salir")
+        print("5️⃣ Ver Informes de Gestión")
+        print("6️⃣ Salir")
+
         
         opcion = input("Selecciona una opción: ")
         
@@ -102,6 +193,8 @@ def menu():
         elif opcion == "4":
             mostrar_transacciones()
         elif opcion == "5":
+            mostrar_informes_gestion()
+        elif opcion == "6":
             print("👋 Saliendo del sistema...")
             conn.close()
             break
